@@ -130,3 +130,13 @@ python quantize.py \
 
   - Original Model: [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)
   - MLX Framework: [Apple Machine Learning Research](https://github.com/ml-explore/mlx)
+
+## License
+
+This project is a modification of [Tongyi-MAI/Z-Image](https://github.com/Tongyi-MAI/Z-Image) and is licensed under the **Apache License 2.0**.
+
+  - **Original Code**: Copyright (c) Tongyi-MAI
+  - **Modifications**: Ported to Apple MLX by uqer1244
+
+<!-- end list -->
+
