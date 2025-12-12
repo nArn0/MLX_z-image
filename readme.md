@@ -45,7 +45,6 @@ Uncurated samples generated directly on a Mac using the 4-bit quantized model.
 
 
 
-
 ## Installation
 
 ### 1\. Clone the repository
@@ -57,52 +56,50 @@ cd MLX_z-image
 
 ### 2\. Install dependencies
 
-Make sure you have Python installed.
+Ensure you have Python installed (Python 3.10+ recommended).
 
 ```bash
 pip install -r requirements.txt
 ```
 
+*(Note: `huggingface_hub` is required for downloading models)*
+
 -----
 
 ## Quick Start
 
-To run the model, you need two things:
+We have packaged everything (Transformer, Text Encoder, VAE, Tokenizer, Scheduler) into a single repository for easy usage.
 
-1.  **Z-Image-Turbo-MLX-4bit**: The converted transformer model (4bit_quantized).
-2.  **Z-Image-Turbo**: The original VAE, Text Encoder, and Scheduler.
+### Option 1: Automatic Download & Run (Recommended)
 
-### 1\. Download MLX Weights (Quantized)
-
-Download the 4-bit converted weights from [uqer1244/MLX-z-image](https://huggingface.co/uqer1244/MLX-z-image).
-
-```bash
-# Install CLI if needed
-pip install huggingface_hub
-
-# Download to 'Z-Image-Turbo-MLX' folder
-huggingface-cli download uqer1244/MLX-z-image --local-dir Z-Image-Turbo-MLX
-```
-
-### 2\. Download Base Model (Original)
-
-Download the original [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) to use its VAE and Text Encoder.
-
-```bash
-# Download to 'Z-Image-Turbo' folder
-huggingface-cli download Tongyi-MAI/Z-Image-Turbo --local-dir Z-Image-Turbo
-```
-
-### 3\. Run Inference
-
-Run the `run.py` script. Make sure to point to both model paths.
+Simply run the script. If the model is not found locally, it will automatically download the full 4-bit quantized package from Hugging Face.
 
 ```bash
 python run.py \
-  --prompt "A futuristic city with flying cars, cinematic lighting, 8k" \
-  --mlx_model_path "Z-Image-Turbo-MLX-4bit" \
-  --pt_model_id "Z-Image-Turbo" \
-  --output "res.png" \
+  --repo_id "uqer1244/MLX-z-image" \
+  --prompt "semi-realistic anime style female warrior, detailed armor, backlighting"
+```
+
+### Option 2: Manual Download
+
+If you prefer to download the model manually (e.g., for offline usage), use the `huggingface-cli`.
+
+**1. Download the Full Package**
+
+```bash
+# Download all components to 'checkpoints' folder
+huggingface-cli download uqer1244/MLX-z-image --local-dir Z-Image-Turbo-MLX
+```
+
+**2. Run Inference**
+
+Point the `--model_path` to your downloaded folder.
+
+```bash
+python run.py \
+  --model_path "Z-Image-Turbo-MLX" \
+  --prompt "semi-realistic anime style female warrior, detailed armor, backlighting" \
+  --output "result.png" \
   --steps 5
 ```
 
@@ -110,13 +107,12 @@ python run.py \
 
 | Argument | Description | Default                  |
 | :--- | :--- |:-------------------------|
-| `--prompt` | Text prompt for generation | *Astronaut...* |
-| `--mlx_model_path` | Path to the MLX weights folder | `Z-Image-Turbo-MLX-4bit` |
-| `--pt_model_id` | Path to the Base Model (or HF ID) | `Z-Image-Turbo`          |
-| `--output` | Output filename | `res.png`                |
+| `--prompt` | Text prompt for image generation | *...anime style...*      |
+| `--model_path` | Path to local model folder | `Z-Image-Turbo-MLX-4bit` |
+| `--repo_id` | Hugging Face Repo ID (for auto-download) | `None`                   |
+| `--output` | Output image filename | `result.png`             |
 | `--steps` | Number of inference steps | `5`                      |
-| `--height` | Image height | `1024`                   |
-| `--width` | Image width | `1024`                   |
+| `--height` / `--width` | Image resolution (must be divisible by 8) | `1024`                   |
 
 -----
 
@@ -124,8 +120,13 @@ python run.py \
 
 We are actively working on making this implementation pure MLX and bug-free.
 
-  - [ ] **Fix Artifacts**: Investigate and resolve visual artifacts (tiling/color issues) currently visible in some generations.
+  - [x] **Fix Artifacts**: Investigate and resolve visual artifacts (tiling/color issues) currently visible in some generations.
   - [ ] **Full MLX Pipeline**: Port the remaining PyTorch components (VAE, Text Encoder, Tokenizer, Scheduler) to native MLX to remove the `torch` and `diffusers` dependencies completely.
+    - [x] Text Encoder
+    - [ ] Tokenizer
+    - [ ] Scheduler
+    - [x] Transformer
+    - [ ] VAE
   - [ ] **LoRA Support**: Add support for loading and applying LoRA adapters for style customization.
 
 -----
