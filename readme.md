@@ -20,6 +20,31 @@ MLX_z-image/
 ├── convert.py                     # Script to convert PyTorch weights to MLX
 └── quantize.py                    # Script to quantize FP16 model to 4-bit
 ````
+## 📊 Performance & Gallery
+
+### Benchmarks
+Inference tests were conducted on Apple Silicon devices using **native MLX** with **4-bit quantization**.
+
+- **Resolution**: 1024x1024
+- **Steps**: 5 (Turbo)
+- **Batch Size**: 1
+
+| Device     | RAM  | Total Time | Denoise Time (MLX) | Time per Step |
+|:-----------|:-----|:-----------|:-------------------|:--------------|
+| **M3 Pro** | 18GB | ~ 182.17 s | 95.48 s            | 19.097 s/Step |
+
+
+### Gallary
+Uncurated samples generated directly on a Mac using the 4-bit quantized model.
+
+*"semi-realistic anime style female warrior, detailed armor, backlighting, dynamic pose, illustration, highly detailed, dramatic lighting"*
+
+|                      **MLX**                      |              **Pytorch**               |
+|:-------------------------------------------------:|:--------------------------------------:|
+| <img src="img/res_4bit.png" width="400">          | <img src="img/res_OG.png" width="400"> |
+
+
+
 
 ## Installation
 
