@@ -1,7 +1,6 @@
 import mlx.core as mx
 import mlx.nn as nn
 import math
-from typing import Optional, Dict, Any
 
 
 class RMSNorm(nn.Module):
@@ -41,6 +40,7 @@ class FeedForward(nn.Module):
         self.w3 = nn.Linear(dim, hidden_dim, bias=False)
 
     def __call__(self, x):
+        # FFN has little room for optimization (already a dense MatMul block)
         return self.w2(nn.silu(self.w1(x)) * self.w3(x))
 
 
@@ -50,7 +50,6 @@ class Attention(nn.Module):
         self.nheads = nheads
         self.head_dim = dim // nheads
         self.scale = self.head_dim ** -0.5
-        self.rope_theta = rope_theta
 
         self.to_q = nn.Linear(dim, dim, bias=False)
         self.to_k = nn.Linear(dim, dim, bias=False)
@@ -60,8 +59,60 @@ class Attention(nn.Module):
         self.norm_q = RMSNorm(self.head_dim, eps=eps)
         self.norm_k = RMSNorm(self.head_dim, eps=eps)
 
+        # Pre-compute frequencies for each split section
+        # Section 1: 32 dim (0~15 freq)
+        # Section 2: 48 dim (0~23 freq)
+        # Section 3: 48 dim (0~23 freq)
+        self.dims = [32, 48, 48]
+        self.splits = [0, 32, 80]  # Start indices
+        self.freqs_cache = {}
+
+    def _get_fused_args(self, positions):
+        """
+        [Optimization Core]
+        Instead of splitting Q/K data, we pre-calculate and fuse the 'angles (Args)'.
+        Manipulating angles (KB size) is much faster than manipulating data tensors (MB size).
+        """
+        # positions: (1, L, 3) -> H, W, T
+        B, L, _ = positions.shape
+
+        # Cache Key: Reuse if sequence length L hasn't changed
+        if L in self.freqs_cache:
+            freqs_tuple = self.freqs_cache[L]
+        else:
+            # Pre-compute frequencies (Executed once)
+            freqs_list = []
+            for d in self.dims:
+                half = d // 2
+                f = mx.exp(-mx.log(256.0) * mx.arange(0, half, dtype=mx.float32) / half)
+                freqs_list.append(f)  # [ (16,), (24,), (24,) ]
+            self.freqs_cache[L] = freqs_list
+            freqs_tuple = freqs_list
+
+        # Calculate angles (Theta) for each section
+        # pos: (1, L)
+        # freqs: (D_half,)
+        # args: (1, L, 1, D_half)
+
+        # 1. Height Section (Dims 0~32)
+        pos_h = positions[..., 0].astype(mx.float32)
+        args_h = pos_h[..., None, None] * freqs_tuple[0][None, None, None, :]
+
+        # 2. Width Section (Dims 32~80)
+        pos_w = positions[..., 1].astype(mx.float32)
+        args_w = pos_w[..., None, None] * freqs_tuple[1][None, None, None, :]
+
+        # 3. Time Section (Dims 80~128)
+        pos_t = positions[..., 2].astype(mx.float32)
+        args_t = pos_t[..., None, None] * freqs_tuple[2][None, None, None, :]
+
+        # Fuse 'angles' here. (Concatenate Args, NOT Tensors)
+        # Result: (1, L, 1, 64) -> Half of the total head dimension
+        return mx.concatenate([args_h, args_w, args_t], axis=-1)
+
     def __call__(self, x, mask=None, positions=None):
         B, L, D = x.shape
+
         q = self.to_q(x).reshape(B, L, self.nheads, self.head_dim)
         k = self.to_k(x).reshape(B, L, self.nheads, self.head_dim)
         v = self.to_v(x).reshape(B, L, self.nheads, self.head_dim)
@@ -70,45 +121,22 @@ class Attention(nn.Module):
         k = self.norm_k(k)
 
         if positions is not None:
+            # 1. Get fused angles (Args)
+            args = self._get_fused_args(positions)  # (1, L, 1, D/2)
 
-            split1 = 32;
-            split2 = 32 + 48
+            # 2. Calculate Sin/Cos (Performed once for the entire chunk)
+            cos = mx.cos(args)
+            sin = mx.sin(args)
 
-            q1, q2, q3 = q[..., :split1], q[..., split1:split2], q[..., split2:]
-            k1, k2, k3 = k[..., :split1], k[..., split1:split2], k[..., split2:]
+            # 3. Rotate entire tensor (No Split, No Loop)
+            # [cite_start]Indexing 0::2 and 1::2 are memory views[cite: 1], so copy cost is near zero.
+            q1 = q[..., 0::2]
+            q2 = q[..., 1::2]
+            q = mx.stack([q1 * cos - q2 * sin, q1 * sin + q2 * cos], axis=-1).reshape(B, L, self.nheads, self.head_dim)
 
-            dims_list = [32, 48, 48]
-
-            def manual_rope(x, dims, pos_idx, base=256.0):
-
-                pos = positions[..., pos_idx].astype(mx.float32)
-
-                half = dims // 2
-                freqs = mx.exp(-mx.log(base) * mx.arange(0, half, dtype=mx.float32) / half)
-
-                # args: (1, L, 1, D/2)
-                args = pos[..., None, None] * freqs[None, None, None, :]
-
-                cos = mx.cos(args)
-                sin = mx.sin(args)
-
-                x1 = x[..., 0::2]
-                x2 = x[..., 1::2]
-
-                out1 = x1 * cos - x2 * sin
-                out2 = x1 * sin + x2 * cos
-
-                return mx.stack([out1, out2], axis=-1).reshape(x.shape)
-
-            q1 = manual_rope(q1, 32, 0);
-            k1 = manual_rope(k1, 32, 0)
-            q2 = manual_rope(q2, 48, 1);
-            k2 = manual_rope(k2, 48, 1)
-            q3 = manual_rope(q3, 48, 2);
-            k3 = manual_rope(k3, 48, 2)
-
-            q = mx.concatenate([q1, q2, q3], axis=-1)
-            k = mx.concatenate([k1, k2, k3], axis=-1)
+            k1 = k[..., 0::2]
+            k2 = k[..., 1::2]
+            k = mx.stack([k1 * cos - k2 * sin, k1 * sin + k2 * cos], axis=-1).reshape(B, L, self.nheads, self.head_dim)
 
         q = q.transpose(0, 2, 1, 3)
         k = k.transpose(0, 2, 1, 3)
@@ -121,14 +149,14 @@ class Attention(nn.Module):
 class ZImageTransformerBlock(nn.Module):
     def __init__(self, config, layer_id, modulation=True):
         super().__init__()
-        dim = config['dim'];
+        dim = config['dim']
         nheads = config['nheads']
         self.modulation = modulation
         self.attention = Attention(dim, nheads, rope_theta=config.get('rope_theta', 256.0), eps=1e-5)
         self.feed_forward = FeedForward(dim, int(dim / 3 * 8))
-        self.attention_norm1 = RMSNorm(dim);
+        self.attention_norm1 = RMSNorm(dim)
         self.ffn_norm1 = RMSNorm(dim)
-        self.attention_norm2 = RMSNorm(dim);
+        self.attention_norm2 = RMSNorm(dim)
         self.ffn_norm2 = RMSNorm(dim)
         if modulation: self.adaLN_modulation = nn.Linear(256, 4 * dim, bias=True)
 
@@ -165,7 +193,7 @@ class FinalLayer(nn.Module):
 class ZImageTransformerMLX(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.config = config;
+        self.config = config
         dim = config['dim']
         self.t_scale = config.get('t_scale', 1000.0)
         self.t_embedder = TimestepEmbedder(256, mid_size=1024)

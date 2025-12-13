@@ -39,6 +39,7 @@ def main():
     parser.add_argument("--repo_id", type=str, default="uqer1244/MLX-z-image")
     parser.add_argument("--prompt", type=str,
                         default="8k, super detailed semi-realistic anime style female warrior, detailed armor, backlighting, dynamic pose, illustration, highly detailed, dramatic lighting")
+    parser.add_argument("--prompt_file", type=str, default="prompt.txt", help="Path to a text file containing the prompt")
     parser.add_argument("--output", type=str, default="res.png")
     parser.add_argument("--steps", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
@@ -58,8 +59,18 @@ def main():
             print(f"Error: Path '{args.model_path}' not found.")
             return
 
+    if args.prompt_file and os.path.exists(args.prompt_file):
+        try:
+            with open(args.prompt_file, "r", encoding="utf-8") as f:
+                file_prompt = f.read().replace("\n", " ").strip()
+                if file_prompt:
+                    args.prompt = file_prompt
+                    print(f"Loaded prompt from '{args.prompt_file}'")
+        except Exception as e:
+            print(f"Failed to read prompt file. Using default/arg prompt. ({e})")
+
     print(f"Generating Image...")
-    print(f"Prompt: {args.prompt[:50]}...")
+    print(f"Prompt: {args.prompt[:100]}..." if len(args.prompt) > 100 else f"Prompt: {args.prompt}")
     print(f"Size: {args.width}x{args.height} | Steps: {args.steps} | Seed: {args.seed}")
 
     # 2. Text Encoding
@@ -193,6 +204,7 @@ def main():
     print(f"Done ({time.time() - t_start:.2f}s)")
 
     print(f"Total Time: {time.time() - global_start:.2f}s | Saved to: {args.output}")
+
 
 if __name__ == "__main__":
     main()
