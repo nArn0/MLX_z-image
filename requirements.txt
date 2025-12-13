@@ -6,3 +6,4 @@ transformers
 huggingface_hub
 Pillow
 safetensors
+accelerate
