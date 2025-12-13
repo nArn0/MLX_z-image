@@ -14,12 +14,12 @@ It is recommended to organize your folders as follows:
 ```text
 MLX_z-image/
 ├── converting/                    # Scripts to convert PyTorch to MLX
-├── Z-Image-Turbo-MLX-4bit/        # MLX Quantized Weights 
+├── Z-Image-Turbo-MLX/             # MLX Weights 
 ├── mlx_text_encoder.py            # MLX converted Text Encoder
 ├── mlx_z_image.py                 # MLX converted transformer
-├── run.py                         # Inference Script
+├── run.py                         # Run Script
 ├── prompt.txt                     # prompt
-└── quantize.py                    # Script to quantize FP16 model to 4-bit
+└── mlx_pipeline.py                # mlx Pipeline
 ````
 ## 📊 Performance & Gallery
 
@@ -27,11 +27,11 @@ MLX_z-image/
 Inference tests were conducted on Apple Silicon devices using **native MLX** with **4-bit quantization**.
 
 - **Resolution**: 1024x1024
-- **Steps**: 5 (Turbo)
+- **Steps**: 9 (Turbo)
 
 | Device     | RAM  | Total Time | Denoise Time | Time per Step |
 |:-----------|:-----|:-----------|:-------------|:--------------|
-| **M3 Pro** | 18GB | ~ 80 s     | 74 s         | 14.8 s/Step   |
+| **M3 Pro** | 18GB | ~ 150 s    | 140 s        | 15 s/Step     |
 
 
 ### Gallary
@@ -75,44 +75,37 @@ We have packaged everything (Transformer, Text Encoder, VAE, Tokenizer, Schedule
 Simply run the script. If the model is not found locally, it will automatically download the full 4-bit quantized package from Hugging Face.
 
 ```bash
-python run.py \
-  --repo_id "uqer1244/MLX-z-image" \
-  --prompt "semi-realistic anime style female warrior, detailed armor, backlighting"
+python run.py 
 ```
 
-### Option 2: Manual Download
 
-If you prefer to download the model manually (e.g., for offline usage), use the `huggingface-cli`.
+> **Note:** The prompt is always loaded from `prompt.txt` to handle long/complex prompts easily.
 
-**1. Download the Full Package**
-
-```bash
-# Download all components to 'checkpoints' folder
-huggingface-cli download uqer1244/MLX-z-image --local-dir Z-Image-Turbo-MLX
-```
-
-**2. Run Inference**
-
-Point the `--model_path` to your downloaded folder.
-
-```bash
-python run.py \
-  --model_path "Z-Image-Turbo-MLX" \
-  --prompt "semi-realistic anime style female warrior, detailed armor, backlighting" \
-  --output "res.png" \
-  --steps 5
-```
 
 ### Options
 
-| Argument | Description | Default             |
-| :--- | :--- |:--------------------|
-| `--prompt` | Text prompt for image generation | *...anime style...* |
-| `--model_path` | Path to local model folder | `Z-Image-Turbo-MLX` |
-| `--repo_id` | Hugging Face Repo ID (for auto-download) | `None`              |
-| `--output` | Output image filename | `res.png`           |
-| `--steps` | Number of inference steps | `5`                 |
-| `--height` / `--width` | Image resolution (must be divisible by 8) | `1024`              |
+| Argument | Description     | Default   |
+| :--- |:----------------|:----------|
+| `--width` | Image Width     | `1024`    |
+| `--height` | Image Height    | `1024`    |
+| `--steps` | Inference Steps | `9`       |
+| `--seed` | Random Seed     | `42`      |
+| `--output` | Output filename | `res.png` |
+
+
+
+```bash
+python run.py \
+  --width 1024 \ 
+  --height 1024 \
+  --steps 9 \
+  --seed 42 \
+  --output "res.png" \
+  --steps 5
+  ```
+
+> **Note:** Width and Height resolutions are always able to devide by 8
+
 
 -----
 

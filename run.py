@@ -9,7 +9,7 @@ def main():
     parser.add_argument("--steps", type=int, default=9)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--height", type=int, default=1024)
-    parser.add_argument("--width", type=int, default=720)
+    parser.add_argument("--width", type=int, default=1024)
     args = parser.parse_args()
 
     prompt_file = "prompt.txt"
