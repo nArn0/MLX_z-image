@@ -10,6 +10,8 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--height", type=int, default=1024)
     parser.add_argument("--width", type=int, default=1024)
+    parser.add_argument("--lora", type=str, default=None)
+    parser.add_argument("--lora_scale", type=float, default=1.0)
     args = parser.parse_args()
 
     prompt_file = "prompt.txt"
@@ -27,7 +29,9 @@ def main():
         width=args.width,
         height=args.height,
         steps=args.steps,
-        seed=args.seed
+        seed=args.seed,
+        lora_path = "",
+        lora_scale = 1.0
     )
 
     image.save(args.output)

@@ -84,14 +84,15 @@ python run.py
 
 ### Options
 
-| Argument | Description     | Default   |
-| :--- |:----------------|:----------|
-| `--width` | Image Width     | `1024`    |
-| `--height` | Image Height    | `1024`    |
-| `--steps` | Inference Steps | `9`       |
-| `--seed` | Random Seed     | `42`      |
-| `--output` | Output filename | `res.png` |
-
+| Argument       | Description     | Default  |
+|:---------------|:----------------|:---------|
+| `--width`      | Image Width     | `1024`   |
+| `--height`     | Image Height    | `1024`   |
+| `--steps`      | Inference Steps | `9`      |
+| `--seed`       | Random Seed     | `42`     |
+| `--output`     | Output filename | `res.png` |
+| `--lora`       | Lora path       | `None`   |
+| `--lora_scale` | Lora scale      | `1.0`    |
 
 
 ```bash
@@ -101,10 +102,16 @@ python run.py \
   --steps 9 \
   --seed 42 \
   --output "res.png" \
-  --steps 5
+  --steps 5 \ 
+  --lora "~~.safetensor" \
+  --lora_scale 1.0 \
   ```
 
 > **Note:** Width and Height resolutions are always able to devide by 8
+
+
+
+### [ComfyUI Custom node setup](custom_nodes/readme.md)
 
 
 -----
@@ -120,7 +127,8 @@ We are actively working on making this implementation pure MLX and bug-free.
     - [ ] Scheduler
     - [x] Transformer
     - [x] VAE (converting to **CoreML** is now working on)
-  - [ ] **LoRA Support**: Add support for loading and applying LoRA adapters for style customization.
+  - [x] **LoRA Support**: Add support for loading and applying LoRA adapters for style customization.
+  - [x] **ComfyUI Node**: Add custom node for ComfyUI GUI.
 
 -----
 
