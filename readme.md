@@ -122,13 +122,15 @@ We are actively working on making this implementation pure MLX and bug-free.
 
   - [x] **Fix Artifacts**: Investigate and resolve visual artifacts (tiling/color issues) currently visible in some generations.
   - [ ] **Full MLX Pipeline**: Port the remaining PyTorch components (VAE, Text Encoder, Tokenizer, Scheduler) to native MLX to remove the `torch` and `diffusers` dependencies completely.
-    - [x] Text Encoder
-    - [ ] Tokenizer
+    - [x] Text Encoder - 4bit
+    - [ ] Tokenizer - tokenizer is faster enough
     - [x] Scheduler
-    - [x] Transformer
-    - [x] VAE 
+    - [x] Transformer - 4bit
+    - [ ] VAE - I tried MLX converting for VAE, but pytorch version is more stable
   - [x] **LoRA Support**: Add support for loading and applying LoRA adapters for style customization.
   - [x] **ComfyUI Node**: Add custom node for ComfyUI GUI.
+  - [ ] **IP over ThunderBolt (or RDMA on TB5) support** : Add support for multiple mac cluster.
+  - [ ] **Z-Image-Edit, Base model support** : now on turbo only.
 
 -----
 
