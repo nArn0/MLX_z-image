@@ -2,4 +2,11 @@
 .venv/
 Z-Image-Turbo-MLX/
 __pycache__/
+<<<<<<< HEAD
 loras/*.safetensors
+=======
+upload.py
+.idea/
+lora
+res.png
+>>>>>>> 1469d90291f32af5e1939494582be2b916b98b87
