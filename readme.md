@@ -93,8 +93,10 @@ python run.py
 | `--steps`      | Inference Steps | `9`      |
 | `--seed`       | Random Seed     | `42`     |
 | `--output`     | Output filename | `res.png` |
-| `--lora`       | Lora path       | `None`   |
+| `--lora_path`  | Lora path       | `None`   |
 | `--lora_scale` | Lora scale      | `1.0`    |
+
+Lora only works when insert "Lora_path"
 
 
 ```bash
@@ -105,7 +107,7 @@ python run.py \
   --seed 42 \
   --output "res.png" \
   --steps 5 \ 
-  --lora "~~.safetensor" \
+  --lora_path "~~.safetensor" \
   --lora_scale 1.0 \
   ```
 
