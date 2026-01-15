@@ -37,12 +37,21 @@ config = {
 # Some keys are already in the target naming, but i'll revert them nonetheless to use
 # the original code as-is. Undo what is done here:
 # https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/z_image_convert_original_to_comfy.py
+
+
+# remove prefix
+def remove_prefix(key):
+    if key.startswith("model.diffusion_model."):
+        return key.replace("model.diffusion_model.", "")
+
+
+# split qkv layers into q,k and v layers
 def remap_qkv(key, state_dict):
     weight = state_dict.pop(key)
     to_q, to_k, to_v = weight.chunk(3, dim=0)
-    state_dict[key.replace(".qkv.", ".to_q.")] = to_q
-    state_dict[key.replace(".qkv.", ".to_k.")] = to_k
-    state_dict[key.replace(".qkv.", ".to_v.")] = to_v
+    state_dict[remove_prefix(key).replace(".qkv.", ".to_q.")] = to_q
+    state_dict[remove_prefix(key).replace(".qkv.", ".to_k.")] = to_k
+    state_dict[remove_prefix(key).replace(".qkv.", ".to_v.")] = to_v
 
 
 replace_keys = {
@@ -55,8 +64,9 @@ replace_keys = {
 }
 
 
+# restore original name of keys
 def remap_keys(key, state_dict):
-    new_key = key
+    new_key = remove_prefix(key)
     for r, rr in replace_keys.items():
         new_key = new_key.replace(r, rr)
     state_dict[new_key] = state_dict.pop(key)
@@ -97,11 +107,7 @@ def map_key_and_convert(key, tensor):
         new_key = key.replace("adaLN_modulation.1", "adaLN_modulation")
 
     # Changed to a tuple from original code to allow loading without saving to disk
-    # also remove the "model.diffusion_model." prefix
-    return (
-        new_key.replace("model.diffusion_model.", ""),
-        mx.array(val).astype(mx.bfloat16),
-    )
+    return (new_key, mx.array(val).astype(mx.bfloat16))
 
 
 def main():
@@ -121,6 +127,15 @@ def main():
         help="Path to save quantized model in mlx format",
     )
     parser.add_argument(
+        "--lora_model",
+        type=str,
+        default="",
+        help="Path to an optional LoRA to merge during conversion",
+    )
+    parser.add_argument(
+        "--lora_scale", type=float, default=1.0, help="Scale for the optional LoRA"
+    )
+    parser.add_argument(
         "--group_size", type=int, default=32, help="Group size for quantization"
     )
     args = parser.parse_args()
@@ -133,7 +148,7 @@ def main():
 
     # Remove an unexpected key. TODO: figure out from where it cames.
     if "model.diffusion_model.norm_final.weight" in pt_weights.keys():
-        del(pt_weights["model.diffusion_model.norm_final.weight"])
+        del pt_weights["model.diffusion_model.norm_final.weight"]
 
     print("Reverting ComfyUI format...")
 
@@ -144,6 +159,24 @@ def main():
             remap_qkv(k, pt_weights)
         else:
             remap_keys(k, pt_weights)
+
+    if args.lora_model:
+        counter = 0
+        print(f"Merging LoRA {args.lora_model} at scale {args.lora_scale}...")
+
+        lora_weights = load_pt_file(args.lora_model)
+        keys = [k for k in pt_weights.keys() if k.endswith(".weight")]
+
+        for k in tqdm(keys):
+            down_key = f"diffusion_model.{k}".replace(".weight", ".lora_A.weight")
+            up_key = f"diffusion_model.{k}".replace(".weight", ".lora_B.weight")
+            if down_key in lora_weights.keys() and up_key in lora_weights.keys():
+                counter += 1
+                pt_weights[k] = pt_weights[k] + args.lora_scale * (
+                    lora_weights[up_key] @ lora_weights[down_key]
+                )
+
+        print(f"Merged {counter} weight keys")
 
     print("Converting to MLX...")
 

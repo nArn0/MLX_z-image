@@ -2,3 +2,4 @@
 .venv/
 Z-Image-Turbo-MLX/
 __pycache__/
+loras/*.safetensors

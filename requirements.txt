@@ -9,3 +9,4 @@ safetensors
 accelerate
 hf_transfer
 tqdm
+gradio
